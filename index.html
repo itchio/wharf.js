@@ -3,90 +3,24 @@
   <head>
     <meta charset="utf-8"/>
     <script src="jszip.min.js"></script>
+    <script src="bridge.js"></script>
     <script src="butlerweb.js"></script>
     <script>
     'use strict'
 
-    var handleZip = function (arr) {
-      console.log("Should extract zip probably")
-      var zip = new JSZip(arr)
-      console.log("zip files: ", zip.files)
-      for (var entryName in zip.files) {
-        var entry = zip.files[entryName]
-        console.log("ZIP has entry: ", entry.name, ", size = ", entry.asArrayBuffer().byteLength)
-      }
+    var onContainer = function (container) {
+      console.log("Container = ", container.entries)
+      var firstEntry = container.entries[0]
+      firstEntry.read().then(function (data) {
+        console.log("first entry: ", firstEntry.path, firstEntry.size, data, data.byteLength)
+      })
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-      var fileinput = document.querySelector("input")
-      if (fileinput.directory) {
-        console.log("Using directory upload proposal")
-        fileinput.onchange = function () {
-          var t1 = (+new Date)
-          var totalBytes = 0
-          var filesLeft = 0
-
-          var walk = function (level, d) {
-            d.getFilesAndDirectories().then(function (seq) {
-              seq.forEach(function (el) {
-                console.log(el)
-                if (el.getFilesAndDirectories) {
-                  walk(level + 1, el)
-                } else {
-                  filesLeft += 1
-                  var reader = new FileReader()
-                  reader.onload = function (evt) {
-                    totalBytes += el.size
-                    filesLeft -= 1
-
-                    if (level == 0 && /\.zip$/.test(el.name.toLowerCase())) {
-                      handleZip(evt.target.result)
-                    }
-
-                    if (filesLeft == 0) {
-                      var t2 = (+new Date)
-                      var totalTime = t2 - t1
-                      console.log("Read", (totalBytes/1024/1024).toFixed(2), "MB in", (totalTime/1000).toFixed(2), "seconds")
-                    }
-                  }
-                  reader.readAsArrayBuffer(el)
-                }
-              })
-            })
-          }
-          walk(0, fileinput)
-        }
-      } else if (fileinput.files) {
-        console.log("Using Chrome 11+ old directory API")
-
-        fileinput.onchange = function () {
-          var totalBytes = 0
-          var t1 = (+new Date)
-          var filesLeft = fileinput.files.length
-
-          for (var i = 0; i < fileinput.files.length; i++) {
-            var file = fileinput.files[i]
-            console.log(file.webkitRelativePath, file.size)
-            ;(function (file) {
-              var reader = new FileReader()
-              reader.onload = function (evt) {
-                totalBytes += file.size
-                filesLeft -= 1
-
-                if (/\.zip$/.test(file.name.toLowerCase())) {
-                  handleZip(evt.target.result)
-                }
-
-                if (filesLeft == 0) {
-                  var t2 = (+new Date)
-                  var totalTime = t2 - t1
-                  console.log("Read", (totalBytes/1024/1024).toFixed(2), "MB in", (totalTime/1000).toFixed(2), "seconds")
-                }
-              }
-              reader.readAsArrayBuffer(file)
-            })(file)
-          }
-        }
+      var fileinputs = document.querySelectorAll(".file-input")
+      for (var i = 0; i < fileinputs.length; i++) {
+        var fileinput = fileinputs[i]
+        window.Uppa(fileinput, onContainer)
       }
     })
     </script>
@@ -101,8 +35,14 @@
   </head>
   <body>
     <h1>Butler web!</h1>
-    <!-- <input type="file" multiple webkitdirectory directory> -->
-    <input type="file">
+    <div class="upload-target">
+      <h2>Upload a .zip file</h2>
+      <input class="file-input" type="file">
+    </div>
+    <div class="upload-target">
+      <h2>...or a directory (Chrome, Firefox Nightly and Edge only)</h2>
+      <input class="file-input" type="file" webkitdirectory directory>
+    </div>
     <textarea></textarea>
   </body>
 </html>
