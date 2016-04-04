@@ -64,7 +64,7 @@ func main() {
 }
 
 // Diff runs some tests right now
-func Diff(file *js.Object) {
+func Diff(file *js.Object, output *js.Object) {
 	go func() {
 		log.Println("In diff!")
 		h5 := &html5File{
@@ -78,16 +78,16 @@ func Diff(file *js.Object) {
 		filebytes := h5.blob.Bytes()
 
 		l := time.Since(t1)
-		log.Printf("Took %s to retrieve whole file", l.String())
+		output.Invoke(fmt.Sprintf("Took %s to retrieve whole file", l.String()))
 
 		r := bytes.NewReader(filebytes)
-		fullyReadZip(r, int64(len(filebytes)))
+		fullyReadZip(r, int64(len(filebytes)), output)
 
 		// fullyReadZip(h5, h5.size)
 	}()
 }
 
-func fullyReadZip(r io.ReaderAt, size int64) {
+func fullyReadZip(r io.ReaderAt, size int64, output *js.Object) {
 	zr, err := zip.NewReader(r, size)
 	if err != nil {
 		panic(err)
@@ -97,7 +97,7 @@ func fullyReadZip(r io.ReaderAt, size int64) {
 	t1 := time.Now()
 
 	for _, file := range zr.File {
-		log.Printf("%20s %s\n", humanize.Bytes(uint64(file.FileInfo().Size())), file.Name)
+		output.Invoke(fmt.Sprintf("%20s %s", humanize.Bytes(uint64(file.FileInfo().Size())), file.Name))
 		rc, err := file.Open()
 		if err != nil {
 			panic(err)
@@ -117,7 +117,7 @@ func fullyReadZip(r io.ReaderAt, size int64) {
 	}
 
 	len := time.Since(t1)
-	fmt.Printf("Total contents size: %s (read in %s, %s / s)\n",
+	output.Invoke(fmt.Sprintf("Total contents size: %s (read in %s, %s / s)",
 		humanize.Bytes(uint64(total)), len.String(),
-		humanize.Bytes(uint64(float64(total)/len.Seconds())))
+		humanize.Bytes(uint64(float64(total)/len.Seconds()))))
 }
