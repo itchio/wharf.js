@@ -1,0 +1,22 @@
+<html>
+  <head>
+    <script src="butlerweb.js"></script>
+    <script>
+    'use strict'
+
+    document.addEventListener("DOMContentLoaded", function () {
+      var i = document.querySelector("input")
+      i.onchange = function () {
+        var file = i.files[0]
+        console.log("Oh yeah!", file)
+        window.wharf.Diff(file)
+      }
+    })
+    </script>
+  </head>
+  <body>
+    <h1>Butler web!</h1>
+    <!-- <input type="file" multiple mozdirectory="" webkitdirectory=""></input> -->
+    <input type="file"></input>
+  </body>
+</html>
