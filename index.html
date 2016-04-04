@@ -14,6 +14,19 @@
       firstEntry.read().then(function (data) {
         console.log("first entry: ", firstEntry.path, firstEntry.size, data, data.byteLength)
       })
+
+      var xhr = new XMLHttpRequest()
+      xhr.responseType = "arraybuffer"
+      xhr.open("GET", "sampledata/alcott.pwr.sig")
+      xhr.onload = function () {
+        var signatureBytes = xhr.response
+        console.log("signatureBytes = ", signatureBytes, signatureBytes.byteLength)
+        window.wharf.Diff(signatureBytes, container)
+      }
+      xhr.onerror = function (e) {
+        console.log('xhr error = ', e)
+      }
+      xhr.send()
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -24,14 +37,6 @@
       }
     })
     </script>
-    <style>
-    textarea {
-      display: block;
-      margin: 1em 0;
-      width: 800px;
-      height: 640px;
-    }
-    </style>
   </head>
   <body>
     <h1>Butler web!</h1>
@@ -43,6 +48,5 @@
       <h2>...or a directory (Chrome, Firefox Nightly and Edge only)</h2>
       <input class="file-input" type="file" webkitdirectory directory>
     </div>
-    <textarea></textarea>
   </body>
 </html>

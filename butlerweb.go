@@ -1,123 +1,97 @@
 package main
 
 import (
-	"archive/zip"
 	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/flimzy/jsblob"
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/itchio/wharf/pwr"
+	"github.com/itchio/wharf/tlc"
 )
 
 func main() {
 	js.Global.Set("wharf", map[string]interface{}{
 		"Diff": Diff,
 	})
-	//
-	// log.Println("GOOS: ", runtime.GOOS)
-	//
-	// TargetContainer := &tlc.Container{
-	// 	Files: []*tlc.File{
-	// 		{Path: "hello.txt", Size: 1024},
-	// 	},
-	// }
-	// SourceContainer := &tlc.Container{
-	// 	Files: []*tlc.File{
-	// 		{Path: "hello.txt", Size: 1024},
-	// 	},
-	// }
-	//
-	// patchBuf := new(bytes.Buffer)
-	// signatureBuf := new(bytes.Buffer)
-	//
-	// dctx := &pwr.DiffContext{
-	// 	Compression: &pwr.CompressionSettings{
-	// 		Algorithm: pwr.CompressionAlgorithm_UNCOMPRESSED,
-	// 		Quality:   0,
-	// 	},
-	// 	Consumer: &pwr.StateConsumer{
-	// 		OnMessage: func(level string, msg string) {
-	// 			log.Printf("[%s] %s\n", level, msg)
-	// 		},
-	// 	},
-	//
-	// 	TargetContainer: TargetContainer,
-	// 	SourceContainer: SourceContainer,
-	// }
-	//
-	// log.Println("Writing patch...")
-	//
-	// err := dctx.WritePatch(patchBuf, signatureBuf)
-	// if err != nil {
-	// 	log.Println("Patching error: ", err.Error())
-	// }
-	//
-	// log.Printf("Patch: %v", patchBuf.Bytes())
-	// log.Printf("Signature: %v", signatureBuf.Bytes())
-	//
-	// log.Println("Patch generated!")
 }
 
-// Diff runs some tests right now
-func Diff(file *js.Object, output *js.Object) {
+// Diff is a wonderful work of wizardry
+func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 	go func() {
-		log.Println("In diff!")
-		h5 := &html5File{
-			blob:   jsblob.Blob{*file},
-			offset: 0,
-			size:   file.Get("size").Int64(),
-			closed: false,
+		// dirs := make(map[string]bool)
+		container := &tlc.Container{}
+
+		var entries = jsContainer.Get("entries")
+		var numEntries = entries.Length()
+		var offset int64
+
+		for i := 0; i < numEntries; i++ {
+			var entry = entries.Index(i)
+			var size = entry.Get("size").Int64()
+			container.Files = append(container.Files, &tlc.File{
+				Path:   entry.Get("path").String(),
+				Size:   size,
+				Offset: offset,
+				Mode:   0644,
+			})
+			offset += size
 		}
 
-		t1 := time.Now()
-		filebytes := h5.blob.Bytes()
+		fmt.Println("Source container: ", container)
 
-		l := time.Since(t1)
-		output.Invoke(fmt.Sprintf("Took %s to retrieve whole file", l.String()))
+		hp := NewHTML5FilePool(jsContainer)
 
-		r := bytes.NewReader(filebytes)
-		fullyReadZip(r, int64(len(filebytes)), output)
+		nativeSignatureBytes, ok := js.Global.Get("Uint8Array").New(signatureBytes).Interface().([]byte)
+		if !ok {
+			panic(fmt.Errorf("Couldn't cast signatureBytes into []byte"))
+		}
 
-		// fullyReadZip(h5, h5.size)
+		log.Printf("Got %d native signature bytes\n", len(nativeSignatureBytes))
+		signatureReader := bytes.NewReader(nativeSignatureBytes)
+
+		targetContainer, targetSignature, err := pwr.ReadSignature(signatureReader)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Target container: ", targetContainer)
+
+		patchBuf := new(bytes.Buffer)
+		signatureBuf := new(bytes.Buffer)
+
+		dctx := &pwr.DiffContext{
+			TargetContainer: targetContainer,
+			TargetSignature: targetSignature,
+
+			SourceContainer: container,
+			FilePool:        hp,
+
+			Compression: &pwr.CompressionSettings{
+				Algorithm: pwr.CompressionAlgorithm_UNCOMPRESSED,
+				Quality:   0,
+			},
+
+			Consumer: &pwr.StateConsumer{
+				OnMessage: func(level string, msg string) {
+					log.Printf("[%s] %s\n", level, msg)
+				},
+				// OnProgress: func(perc float64) {
+				// 	log.Printf("Progress %.2f", perc)
+				// },
+			},
+		}
+
+		err = dctx.WritePatch(patchBuf, signatureBuf)
+		if err != nil {
+			panic(err)
+		}
+
+		log.Println(humanize.Bytes(uint64(patchBuf.Len())), "patch")
+		log.Println(humanize.Bytes(uint64(signatureBuf.Len())), "signature")
+
+		// log.Printf("Patch: %v", patchBuf.Bytes())
+		// log.Printf("Signature: %v", signatureBuf.Bytes())
 	}()
-}
-
-func fullyReadZip(r io.ReaderAt, size int64, output *js.Object) {
-	zr, err := zip.NewReader(r, size)
-	if err != nil {
-		panic(err)
-	}
-
-	var total int64
-	t1 := time.Now()
-
-	for _, file := range zr.File {
-		output.Invoke(fmt.Sprintf("%20s %s", humanize.Bytes(uint64(file.FileInfo().Size())), file.Name))
-		rc, err := file.Open()
-		if err != nil {
-			panic(err)
-		}
-
-		readBytes, err := io.Copy(ioutil.Discard, rc)
-		if err != nil {
-			panic(err)
-		}
-
-		total += readBytes
-
-		err = rc.Close()
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	len := time.Since(t1)
-	output.Invoke(fmt.Sprintf("Total contents size: %s (read in %s, %s / s)",
-		humanize.Bytes(uint64(total)), len.String(),
-		humanize.Bytes(uint64(float64(total)/len.Seconds()))))
 }
