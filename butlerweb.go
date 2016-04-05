@@ -16,6 +16,9 @@ func main() {
 	js.Global.Set("wharf", map[string]interface{}{
 		"Diff": Diff,
 	})
+
+	pwr.RegisterCompressor(pwr.CompressionAlgorithm_GZIP, &gzipCompressor{})
+	pwr.RegisterDecompressor(pwr.CompressionAlgorithm_BROTLI, &brotliDecompressor{})
 }
 
 // Diff is a wonderful work of wizardry
@@ -59,9 +62,6 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 			panic(err)
 		}
 
-		// fmt.Println("Target container: ", targetContainer)
-		// fmt.Println("Target signature: ", targetSignature)
-
 		patchBuf := new(bytes.Buffer)
 		signatureBuf := new(bytes.Buffer)
 
@@ -73,8 +73,8 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 			FilePool:        hp,
 
 			Compression: &pwr.CompressionSettings{
-				Algorithm: pwr.CompressionAlgorithm_UNCOMPRESSED,
-				Quality:   0,
+				Algorithm: pwr.CompressionAlgorithm_GZIP,
+				Quality:   1,
 			},
 
 			Consumer: &pwr.StateConsumer{
@@ -97,9 +97,6 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 
 		prettySize := humanize.Bytes(uint64(targetContainer.Size))
 		perSecond := humanize.Bytes(uint64(float64(targetContainer.Size) / time.Since(startTime).Seconds()))
-		log.Println("%s (%s) @ %s/s\n", prettySize, targetContainer.Stats(), perSecond)
-
-		// log.Printf("Patch: %v", patchBuf.Bytes())
-		// log.Printf("Signature: %v", signatureBuf.Bytes())
+		log.Printf("%s (%s) @ %s/s\n", prettySize, targetContainer.Stats(), perSecond)
 	}()
 }
