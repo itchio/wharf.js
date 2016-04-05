@@ -9,17 +9,26 @@
     'use strict'
 
     var onContainer = function (container) {
-      var xhr = new XMLHttpRequest()
-      xhr.responseType = "arraybuffer"
-      xhr.open("GET", "sampledata/alcott.pwr.sig?t=" + (+new Date))
-      xhr.onload = function () {
-        var signatureBytes = xhr.response
+      var sigInput = document.querySelector(".signature-input")
+      if (!sigInput.files) {
+        throw new Error("Missing signature!")
+      }
+
+      // var xhr = new XMLHttpRequest()
+      // xhr.responseType = "arraybuffer"
+      // xhr.open("GET", "sampledata/alcott.pwr.sig?t=" + (+new Date))
+      // xhr.onload = function () {
+      //   var signatureBytes = xhr.response
+      //   window.wharf.Diff(signatureBytes, container)
+      // }
+      // xhr.onerror = function (e) {
+      //   console.log('xhr error = ', e)
+      // }
+      // xhr.send()
+
+      Uppa.read(sigInput.files[0]).then(function (signatureBytes) {
         window.wharf.Diff(signatureBytes, container)
-      }
-      xhr.onerror = function (e) {
-        console.log('xhr error = ', e)
-      }
-      xhr.send()
+      })
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -33,6 +42,10 @@
   </head>
   <body>
     <h1>Butler web!</h1>
+    <div class="upload-target">
+      <h2>Pick a signature file</h2>
+      <input class="signature-input" type="file">
+    </div>
     <div class="upload-target">
       <h2>Upload a .zip file</h2>
       <input class="file-input" type="file">

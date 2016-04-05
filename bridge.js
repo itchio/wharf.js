@@ -136,3 +136,5 @@ function onchange (listener, evt) {
 window.Uppa = function (input, listener) {
   input.onchange = (evt) => onchange(listener, evt)
 }
+
+window.Uppa.read = read
