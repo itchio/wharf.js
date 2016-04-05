@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gopherjs/gopherjs/js"
@@ -20,6 +21,8 @@ func main() {
 // Diff is a wonderful work of wizardry
 func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 	go func() {
+		startTime := time.Now()
+
 		// dirs := make(map[string]bool)
 		container := &tlc.Container{}
 
@@ -91,6 +94,10 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 
 		log.Println(humanize.Bytes(uint64(patchBuf.Len())), "patch")
 		log.Println(humanize.Bytes(uint64(signatureBuf.Len())), "signature")
+
+		prettySize := humanize.Bytes(uint64(targetContainer.Size))
+		perSecond := humanize.Bytes(uint64(float64(targetContainer.Size) / time.Since(startTime).Seconds()))
+		log.Println("%s (%s) @ %s/s\n", prettySize, targetContainer.Stats(), perSecond)
 
 		// log.Printf("Patch: %v", patchBuf.Bytes())
 		// log.Printf("Signature: %v", signatureBuf.Bytes())
