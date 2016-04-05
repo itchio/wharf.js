@@ -16,9 +16,6 @@ func main() {
 	js.Global.Set("wharf", map[string]interface{}{
 		"Diff": Diff,
 	})
-
-	pwr.RegisterCompressor(pwr.CompressionAlgorithm_GZIP, &gzipCompressor{})
-	pwr.RegisterDecompressor(pwr.CompressionAlgorithm_BROTLI, &brotliDecompressor{})
 }
 
 // Diff is a wonderful work of wizardry
