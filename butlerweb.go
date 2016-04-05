@@ -56,7 +56,8 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 			panic(err)
 		}
 
-		fmt.Println("Target container: ", targetContainer)
+		// fmt.Println("Target container: ", targetContainer)
+		// fmt.Println("Target signature: ", targetSignature)
 
 		patchBuf := new(bytes.Buffer)
 		signatureBuf := new(bytes.Buffer)

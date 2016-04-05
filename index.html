@@ -9,18 +9,11 @@
     'use strict'
 
     var onContainer = function (container) {
-      console.log("Container = ", container.entries)
-      var firstEntry = container.entries[0]
-      firstEntry.read().then(function (data) {
-        console.log("first entry: ", firstEntry.path, firstEntry.size, data, data.byteLength)
-      })
-
       var xhr = new XMLHttpRequest()
       xhr.responseType = "arraybuffer"
-      xhr.open("GET", "sampledata/alcott.pwr.sig")
+      xhr.open("GET", "sampledata/alcott.pwr.sig?t=" + (+new Date))
       xhr.onload = function () {
         var signatureBytes = xhr.response
-        console.log("signatureBytes = ", signatureBytes, signatureBytes.byteLength)
         window.wharf.Diff(signatureBytes, container)
       }
       xhr.onerror = function (e) {
