@@ -13,13 +13,13 @@ import (
 )
 
 func main() {
-	js.Global.Set("wharf", map[string]interface{}{
-		"Diff": Diff,
+	js.Global.Set("Wharf", map[string]interface{}{
+		"diff": Diff,
 	})
 }
 
-// Diff is a wonderful work of wizardry
-func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
+// Diff lets one create patches
+func Diff(signatureBytes *js.Object, jsContainer *js.Object, callbacks *js.Object) {
 	go func() {
 		startTime := time.Now()
 
@@ -62,6 +62,22 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 		patchBuf := new(bytes.Buffer)
 		signatureBuf := new(bytes.Buffer)
 
+		consumer := pwr.StateConsumer{}
+
+		if callbacks.Bool() {
+			if onMessage := callbacks.Get("onMessage"); onMessage != nil {
+				consumer.OnMessage = func(level string, msg string) {
+					onMessage.Invoke(level, msg)
+				}
+			}
+
+			if onProgress := callbacks.Get("onProgress"); onProgress != nil {
+				consumer.OnProgress = func(perc float64) {
+					onProgress.Invoke(perc)
+				}
+			}
+		}
+
 		dctx := &pwr.DiffContext{
 			TargetContainer: targetContainer,
 			TargetSignature: targetSignature,
@@ -74,14 +90,7 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 				Quality:   1,
 			},
 
-			Consumer: &pwr.StateConsumer{
-				OnMessage: func(level string, msg string) {
-					log.Printf("[%s] %s\n", level, msg)
-				},
-				// OnProgress: func(perc float64) {
-				// 	log.Printf("Progress %.2f", perc)
-				// },
-			},
+			Consumer: &consumer,
 		}
 
 		err = dctx.WritePatch(patchBuf, signatureBuf)
@@ -89,11 +98,11 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object) {
 			panic(err)
 		}
 
-		log.Println(humanize.Bytes(uint64(patchBuf.Len())), "patch")
-		log.Println(humanize.Bytes(uint64(signatureBuf.Len())), "signature")
+		consumer.Infof("%s patch", humanize.Bytes(uint64(patchBuf.Len())))
+		consumer.Infof("%s signature", humanize.Bytes(uint64(signatureBuf.Len())))
 
 		prettySize := humanize.Bytes(uint64(targetContainer.Size))
 		perSecond := humanize.Bytes(uint64(float64(targetContainer.Size) / time.Since(startTime).Seconds()))
-		log.Printf("%s (%s) @ %s/s\n", prettySize, targetContainer.Stats(), perSecond)
+		consumer.Infof("%s (%s) @ %s/s\n", prettySize, targetContainer.Stats(), perSecond)
 	}()
 }

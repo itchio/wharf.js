@@ -1,58 +1,112 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8"/>
-    <script src="jszip.min.js"></script>
-    <script src="bridge.js"></script>
-    <script src="butlerweb.js"></script>
+    <meta charset='utf-8'/>
+    <script src='jszip.min.js'></script>
+    <script src='hopla.js'></script>
+    <script src='wharf.js.js'></script>
     <script>
     'use strict'
 
+    var textarea
+    var consumer = {
+      onMessage: function (level, message) {
+        textarea.value += ('\n[' + level + '] ' + message)
+        textarea.scrollTop = textarea.scrollHeight;
+      },
+      onProgress: function (perc) {
+        console.log('perc =', perc)
+      }
+    }
+
     var onContainer = function (container) {
-      var sigInput = document.querySelector(".signature-input")
+      var sigInput = document.querySelector('.signature-input')
       if (!sigInput.files) {
-        throw new Error("Missing signature!")
+        throw new Error('Missing signature!')
       }
 
-      // var xhr = new XMLHttpRequest()
-      // xhr.responseType = "arraybuffer"
-      // xhr.open("GET", "sampledata/alcott.pwr.sig?t=" + (+new Date))
-      // xhr.onload = function () {
-      //   var signatureBytes = xhr.response
-      //   window.wharf.Diff(signatureBytes, container)
-      // }
-      // xhr.onerror = function (e) {
-      //   console.log('xhr error = ', e)
-      // }
-      // xhr.send()
-
-      Uppa.read(sigInput.files[0]).then(function (signatureBytes) {
-        window.wharf.Diff(signatureBytes, container)
+      Hopla.read(sigInput.files[0]).then(function (signatureBytes) {
+        window.Wharf.diff(signatureBytes, container, consumer)
       })
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
-      var fileinputs = document.querySelectorAll(".file-input")
+    document.addEventListener('DOMContentLoaded', function () {
+      textarea = document.querySelector('textarea')
+      var fileinputs = document.querySelectorAll('.file-input')
       for (var i = 0; i < fileinputs.length; i++) {
         var fileinput = fileinputs[i]
-        window.Uppa(fileinput, onContainer)
+        window.Hopla(fileinput, onContainer)
       }
     })
     </script>
+    <link href='https://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+    <style>
+    * {
+      font-family: 'Lato', sans-serif;
+    }
+
+    textarea {
+      font-family: 'Source Code Pro', monospace;
+      width: 100%;
+      height: 400px;
+      overflow-y: scroll;
+      font-size: 13px;
+      padding: 20px;
+      border: none;
+    }
+
+    body {
+      margin: 20px;
+    }
+
+    .columns {
+      display: flex;
+    }
+
+    .right-column {
+      flex-grow: 1;
+      margin: 0 40px;
+    }
+
+    .upload-target {
+      margin-top: 40px;
+    }
+
+    .upload-target, textarea {
+      padding: 20px;
+      border: 2px solid black;
+      border-radius: 4px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+    </style>
   </head>
   <body>
-    <h1>Butler web!</h1>
-    <div class="upload-target">
-      <h2>Pick a signature file</h2>
-      <input class="signature-input" type="file">
-    </div>
-    <div class="upload-target">
-      <h2>Upload a .zip file</h2>
-      <input class="file-input" type="file">
-    </div>
-    <div class="upload-target">
-      <h2>...or a directory (Chrome, Firefox Nightly and Edge only)</h2>
-      <input class="file-input" type="file" webkitdirectory directory>
+    <h1>wharf.js demo</h1>
+
+    <div class='columns'>
+      <div class='left-column'>
+        <div class='upload-target'>
+          <h2>Pick a signature file</h2>
+          <input class='signature-input' type='file'>
+        </div>
+        <p>then...</p>
+        <div class='upload-target'>
+          <h2>Upload a .zip file</h2>
+          <input class='file-input' type='file'>
+          <p>...or a directory (Chrome / Firefox Nightly and Edge only)</p>
+          <h2></h2>
+          <input class='file-input' type='file' webkitdirectory directory>
+        </div>
+      </div>
+
+      <div class='right-column'>
+        <h2>Log output</h2>
+        <textarea disabled></textarea>
+      </div>
     </div>
   </body>
 </html>

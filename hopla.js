@@ -133,8 +133,9 @@ function onchange (listener, evt) {
   }
 }
 
-window.Uppa = function (input, listener) {
+window.Hopla = function (input, listener) {
   input.onchange = (evt) => onchange(listener, evt)
 }
 
-window.Uppa.read = read
+window.Hopla.read = read
+
