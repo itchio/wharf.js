@@ -119,9 +119,9 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object, callbacks *js.Objec
 		consumer.Infof("%s patch", humanize.Bytes(uint64(patchCounter.Count())))
 		consumer.Infof("%s signature", humanize.Bytes(uint64(signatureCounter.Count())))
 
-		prettySize := humanize.Bytes(uint64(targetContainer.Size))
-		perSecond := humanize.Bytes(uint64(float64(targetContainer.Size) / time.Since(startTime).Seconds()))
-		consumer.Infof("%s (%s) @ %s/s\n", prettySize, targetContainer.Stats(), perSecond)
+		prettySize := humanize.Bytes(uint64(sourceContainer.Size))
+		perSecond := humanize.Bytes(uint64(float64(sourceContainer.Size) / time.Since(startTime).Seconds()))
+		consumer.Infof("%s (%s) @ %s/s\n", prettySize, sourceContainer.Stats(), perSecond)
 
 		if callbacks.Bool() {
 			if onComplete := callbacks.Get("onComplete"); onComplete.Bool() {
