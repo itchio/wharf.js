@@ -41,6 +41,7 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object, callbacks *js.Objec
 			})
 			offset += size
 		}
+		container.Size = offset
 
 		fmt.Println("Source container: ", container)
 
