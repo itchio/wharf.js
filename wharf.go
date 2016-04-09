@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/itchio/wharf/counter"
 	"github.com/itchio/wharf/pwr"
 	"github.com/itchio/wharf/tlc"
 )
@@ -60,22 +62,34 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object, callbacks *js.Objec
 			panic(err)
 		}
 
-		patchBuf := new(bytes.Buffer)
-		signatureBuf := new(bytes.Buffer)
-
 		consumer := pwr.StateConsumer{}
 
+		var patchWriter io.Writer
+		var signatureWriter io.Writer
+
 		if callbacks.Bool() {
-			if onMessage := callbacks.Get("onMessage"); onMessage != nil {
+			if onMessage := callbacks.Get("onMessage"); onMessage.Bool() {
 				consumer.OnMessage = func(level string, msg string) {
 					onMessage.Invoke(level, msg)
 				}
 			}
 
-			if onProgress := callbacks.Get("onProgress"); onProgress != nil {
+			if onProgress := callbacks.Get("onProgress"); onProgress.Bool() {
 				consumer.OnProgress = func(perc float64) {
 					onProgress.Invoke(perc)
 				}
+			}
+
+			if onSignatureWrite := callbacks.Get("onSignatureWrite"); onSignatureWrite.Bool() {
+				signatureWriter = &html5CallbackWriter{callback: onSignatureWrite}
+			} else {
+				signatureWriter = new(bytes.Buffer)
+			}
+
+			if onPatchWrite := callbacks.Get("onPatchWrite"); onPatchWrite.Bool() {
+				patchWriter = &html5CallbackWriter{callback: onPatchWrite}
+			} else {
+				patchWriter = new(bytes.Buffer)
 			}
 		}
 
@@ -94,16 +108,25 @@ func Diff(signatureBytes *js.Object, jsContainer *js.Object, callbacks *js.Objec
 			Consumer: &consumer,
 		}
 
-		err = dctx.WritePatch(patchBuf, signatureBuf)
+		patchCounter := counter.NewWriter(patchWriter)
+		signatureCounter := counter.NewWriter(signatureWriter)
+
+		err = dctx.WritePatch(patchCounter, signatureCounter)
 		if err != nil {
 			panic(err)
 		}
 
-		consumer.Infof("%s patch", humanize.Bytes(uint64(patchBuf.Len())))
-		consumer.Infof("%s signature", humanize.Bytes(uint64(signatureBuf.Len())))
+		consumer.Infof("%s patch", humanize.Bytes(uint64(patchCounter.Count())))
+		consumer.Infof("%s signature", humanize.Bytes(uint64(signatureCounter.Count())))
 
 		prettySize := humanize.Bytes(uint64(targetContainer.Size))
 		perSecond := humanize.Bytes(uint64(float64(targetContainer.Size) / time.Since(startTime).Seconds()))
 		consumer.Infof("%s (%s) @ %s/s\n", prettySize, targetContainer.Stats(), perSecond)
+
+		if callbacks.Bool() {
+			if onComplete := callbacks.Get("onComplete"); onComplete.Bool() {
+				onComplete.Invoke()
+			}
+		}
 	}()
 }

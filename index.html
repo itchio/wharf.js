@@ -15,7 +15,16 @@
         textarea.scrollTop = textarea.scrollHeight;
       },
       onProgress: function (perc) {
-        console.log('perc =', perc)
+        document.title = (perc * 100).toFixed(2) + '% done'
+      },
+      onSignatureWrite: function (arr) {
+        console.log('Received', arr.byteLength, ' signature bytes', '0x' + arr[0].toString(16))
+      },
+      onPatchWrite: function (arr) {
+        console.log('Received', arr.byteLength, ' patch bytes', '0x' + arr[0].toString(16))
+      },
+      onComplete: function () {
+        document.title = 'complete!'
       }
     }
 
